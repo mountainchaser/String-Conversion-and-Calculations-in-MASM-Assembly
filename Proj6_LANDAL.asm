@@ -80,7 +80,8 @@ INCLUDE Irvine32.inc
 	error		BYTE	"ERROR: This is either not a valid number, or your integer has too many digits.",0
 	ec1			BYTE	"**EC: Numbers each line of user input with running total of user's valid numbers using WriteVal.",13,10,13,10,0
 	ASCIIstring	BYTE	MAXBYTES DUP(?)
-	maxValue	BYTE	"2147483647",0
+	emptyString	BYTE	MAXBYTES DUP(?)
+	maxValue	BYTE	"2147483648",0
 	numArray	SDWORD	ARRAYELEMENTS DUP(?)
 	arrayCount	SDWORD	1				
 	space		BYTE	" ",0
@@ -104,7 +105,6 @@ main PROC
 	MOV		EDX, OFFSET instruction
 	CALL	WriteString
 
-
 	;GET 10 VALID INTEGERS FROM USER
 	;set up:
 	MOV		EDI, OFFSET storedDec
@@ -120,7 +120,8 @@ main PROC
 	MOV		EDX, OFFSET space
 	CALL	WriteString
 
-	PUSH	OFFSET	maxValue
+	PUSH	OFFSET boolie
+	PUSH	OFFSET maxValue
 	PUSH	OFFSET error
 	PUSH	OFFSET storedDec
 	PUSH	OFFSET ASCIIstring
@@ -128,19 +129,23 @@ main PROC
 	PUSH	OFFSET prompt
 	CALL	ReadVal
 	CALL	CrLF
-	MOV		EDX, boolie
-	CMP		EDX, 1
+	CMP		boolie, 1
 	JNE		_loop
 	INC		arrayCount
-	MOV		EDX, 0
-	MOV		boolie, EDX
+	MOV		boolie, 0
 
 	;STORE IN ARRAY (using register indirect addressing)
-
 	MOV		ESI, OFFSET storedDec	; num going into array
-	MOV		EDX, [ESI]
-	MOV		numArray[EBX], EDX				; move value into array
-	ADD		EBX, TYPE numArray					
+	ADD		ESI, EBX
+	MOV		[ESI], EDX				; move value into array
+	ADD		EBX, TYPE numArray				
+	
+	; clear ASCIIstring
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET ASCIIstring
+	REP    MOVSB
 	LOOP	_loop					; LOOP x's ARRAYSIZE
 
 	;loop through array, display ints
@@ -185,11 +190,12 @@ main ENDP
 
 	; string primitive setup
 	_setup:
+	CLD
 	MOV		EDX, [EBP + 28]
 	MOV		ECX, EDX				; bytesread
 	MOV		ESI, [EBP + 32]			; input array ASCIIstring (from mGetString)
 	MOV		EDI, 0					; for conversion algorithim
-	MOV		EDX, [EBP+44]			; track iteration through maxvalue chars
+	MOV		EDX, [EBP + 44]			; track iteration through maxvalue chars
 
 	;CHECK FOR SIGNS
 	_stringLoop:
@@ -200,45 +206,72 @@ main ENDP
 	CMP		AL, 43			; +
 	JE		_skipSign
 	CMP		ECX, [EBP + 28]
-	JNE		_signLength
+	JNE		_numsOnly
 
 	;VALIDATE LENGTH FIRST ITERATION
-	CMP		ECX, LENGTHOF MAXVALUE	; if more chars than maxvalue (no sign)
+	CMP		ECX, LENGTHOF MAXVALUE-1	; if more chars than maxvalue (no sign)
 	JG		_error
-	CMP		ECX, LENGTHOF MAXVALUE
-	JE		_validateLoop
-	JMP		_convert
+	CMP		ECX, LENGTHOF MAXVALUE-1
+	JE		_validateLoop1
+	JMP		_numsOnly
 
 	_signLength:
 	CMP		ECX, LENGTHOF MAXVALUE
 	JG		_error	
-	CMP		ECX, LENGTHOF MAXVALUE
-	JL		_convert
+	CMP		ECX, LENGTHOF MAXVALUE 
+	JL		_numsOnly
 
-	_validateLoop:
+	_validateLoop2:					; if same length as max value, check if value is greater than maxvalue
+	XOR		EAX, EAX
+	LODSB
+	_validateLoop1:
 	MOV		EDX, [EBP+28]			;bytes read/ counter
 	SUB		EDX, ECX
-	ADD		EDX, [EBP + 44]
-	XOR		EBX, EBX
-	MOV		EBX, EDX
-	CMP		EAX, EBX		
+	CMP		AL, maxValue[EDX]		
 	JG		_error
-	SUB		EAX, 48							;convert ASCII to SDWORD
-	IMUL	EDI, 10
-	ADD		EAX, EBX
-	MOV		EDI, EAX
-	LOOP	_stringLoop	
-	MOV		EAX, [EBP+36]
-	MOV		[EAX], EDI
-	LOOP	_validateLoop
-	JMP		_validateNeg
+	LOOP	_validateLoop2
+
+	_numsOnly:
+	CLD								; check for invalid chars
+	MOV		EDX, [EBP + 28]
+	MOV		ECX, EDX
+	MOV		ESI, [EBP + 32]			; input array ASCIIstring (from mGetString)
+	XOR		EAX, EAX
+	LODSB	
+	CMP		AL, 45			; -
+	JE		_loopNumsOnly
+	CMP		AL, 43			; +	
+	JE		_loopNumsOnly
+	_checknum:
+	CMP		AL, 48
+	JL		_error
+	CMP		AL, 57
+	JG		_error
+	_loopNumsOnly:
+	XOR		EAX, EAX
+	LODSB
+	LOOP	_checkNum
 	
+	_convert2:                      ;setup conversion
+	CLD
+	MOV		EDX, [EBP + 28]
+	MOV		ECX, EDX				; bytesread
+	MOV		ESI, [EBP + 32]			; input array ASCIIstring (from mGetString)
+	MOV		EDI, 0					; for conversion algorithim
+
 	_convert:
+	XOR		EAX, EAX
+	LODSB
+	CMP		AL, 45
+	JE		_convertLoop
+	CMP		AL, 43
+	JE		_convertLoop
 	SUB		EAX, 48							;convert ASCII to SDWORD
 	IMUL	EDI, 10
-	ADD		EAX, EBX
+	ADD		EAX, EDI
 	MOV		EDI, EAX
-	LOOP	_stringLoop	
+	_convertLoop:
+	LOOP	_convert
 	MOV		EAX, [EBP+36]
 	MOV		[EAX], EDI
 	JMP		_validateNeg
@@ -258,18 +291,17 @@ main ENDP
 	LODSB
 	CMP		AL, 45				;check if first char is -
 	JNE		_exit
-	MOV		EAX, [EBP + 36]
-	NEG		EAX
-	CMP		EAX, MINVALUE
+	NEG		EDI
+	CMP		EDI, MINVALUE
 	JNE		_exit
 	INC		EAX		
 
 	_exit:
+	XOR		ECX, ECX
 	MOV		EDX, [EBP + 48]
-	INC		EDX
-	MOV		[EBP + 48], EDX
-	MOV		[EBP + 36], EAX		; output storedDec
-	MOV		EDX, 1				; boolie return TRUE
+	MOV		ECX, 1
+	MOV		[EDX], ECX			; boolie return TRUE (1) 
+	MOV		[EBP + 36], EDI		; output storedDec
 	MOV		[EBP + 42], EDX
 	_errorExit:
 	POP EBP
