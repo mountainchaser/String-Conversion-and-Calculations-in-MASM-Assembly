@@ -114,7 +114,7 @@ main PROC
 
 	_loop:
 	;EXTRA CREDIT 1
-	PUSH	OFFSET arrayCount
+	PUSH	arrayCount
 	PUSH	OFFSET ASCIIstring
 	CALL	WriteVal
 	MOV		EDX, OFFSET space
@@ -147,20 +147,25 @@ main PROC
 	MOV    ESI, OFFSET emptyString
 	MOV    EDI, OFFSET ASCIIstring
 	REP    MOVSB
-	CMP	   ECX, 0
-	JG	   _loop					; LOOP x's ARRAYSIZE
+	JMP	   _loop
 
 	;loop through array, display ints
+	CLD
+	MOV		ECX, arrayCount
 	_displayInts:
-	MOV		ECX, LENGTHOF numArray
-	MOV		ESI, OFFSET numArray
+	DEC		ECX
+	PUSH	numArray
+	PUSH	OFFSET ASCIIstring
 	CALL	WriteVal
+	ADD		ESI, TYPE numArray
+	CMP		ECX, 1
+	JE		_SUM
 	MOV		EDX, OFFSET comma
 	CALL	WriteString
 	LOOP	_displayInts
 
-
 	;calculate sum and display
+	_SUM:
 
 	;calvulate average and display
 
@@ -345,38 +350,40 @@ main ENDP
 
 	MOV		EBX, 0			;initialize digit count
 
-	;convert SDWORD to ASCII
+	XOR		EDX, EDX
+	MOV		EAX, [EBP + 28]			;move val SDWORD into EDX
 	_loop:
-	MOV		ESI, [EBP + 28]			;move val SDWORD into EDX
-	MOV		EDI, [ESI]
-	MOV		EDX, EDI
-	
 	CDQ
 	MOV		ECX, 10
 	IDIV	ECX
 	MOV		ECX, 0
-	ADD		EDX, 48					;else add 48 to remainder to convert to ASCII
-	MOV		ECX, [EBP + 24 + EBX]
-	MOV		[ECX], EDX				;move into ASCIIstring
-	INC		ECX	
+	MOV		EDI, EDX
+	ADD		EDI, 48					;else add 48 to remainder to convert to ASCII
+	MOV		ECX, [EBP + 24]
+	ADD		ECX, EBX
+	MOV		[ECX], EDI				;move into ASCIIstring
+	INC		EBX
 	CMP		EAX, 0					;if quotient is 0, then last digit
-	JLE		_displayString
+	JLE		_isNegative
 	JMP		_loop
-					
-
-	_lastDigit:
-	;CMP		EDX, 0
-	;JL		_negative
-	;JMP		_displayString
-
-	;_negative:
-	;NEG		EDX
-	;ADD		EDX, 48
-	;MOV		[EBP + 8 + EBX], EDX
-	;INC		EBX
-	;MOV		[EBP + 8 + EBX], 45
 
 	;invoke mDisplayString
+	_lastDigit:
+	;CMP		EDX, 0
+	;JE		_isNegative
+	;MOV		EDI, [EBP + 24]
+	;ADD		EDI, EBX
+	;MOV		[EDI], EDX
+
+	_isNegative:
+	MOV		EDX, [EBP+28]
+	CMP		EDX, 0
+	JGE		_displaystring
+	INC		EBX
+	MOV		EDI, [EBP + 24 + EBX]
+	MOV		EDX, 45
+	MOV		[EDI], EDX				;move into ASCIIstring
+
 	_displayString:
 	mDisplayString	[EBP+24]
 
