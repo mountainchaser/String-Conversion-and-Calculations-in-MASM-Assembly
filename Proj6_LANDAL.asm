@@ -28,16 +28,16 @@ INCLUDE Irvine32.inc
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
 
-	mGetString		MACRO	promptAddress, ASCIIarrAddress, ASCIIcountAddress, bytesReadAddress
+	mGetString		MACRO	stringAddress, bytesReadAddress, promptAddress
 
-		;prompt user for string input string input, store using ReadString
+		;prompt user for string input, store using ReadString
 		MOV		EDX, promptAddress
 		CALL	WriteString
-		MOV		EDX, ASCIIarrAddress
+
+		MOV		EDX, stringAddress
 		MOV		ECX, MAXBYTES
 		CALL	ReadString
 		MOV		[bytesReadAddress], EAX
-		CALL	CrLF
 
 	ENDM
 
@@ -66,64 +66,92 @@ INCLUDE Irvine32.inc
 ;-----------------------------------------------------------------------------------------------------
 	
 	;CONSTANTS
-	MINVALUE = -2147483648
-	MAXVALUE = 2147483647
+	MINVALUE = 2147483648  ;negated in code
 	MAXASCII = 57
 	MAXBYTES = 12
-
+	ARRAYELEMENTS = 10
 
 .data
 
 	progTitle	BYTE	"			String Primitives and Macros in MASM Assembly",13,10,0
 	programmer	BYTE	"					by Allison Land",13,10,13,10,0
-	instruction	BYTE	"This program requires that you enter ten numbers between -2,147,483,648 and 2,147,483,647.",13,10,13,10,0
+	instruction	BYTE	"This program requires that you enter ten integers between -2,147,483,648 and 2,147,483,647.",13,10,13,10,0
 	prompt		BYTE	"Please enter a number: ",0
 	error		BYTE	"ERROR: This is either not a valid number, or your integer has too many digits.",0
-	ASCIIarr	BYTE	maxBytes DUP(?)
-	ASCIIcount	SDWORD	1				
-	;space		BYTE	" ",0
-	decArr		SDWORD	10 DUP(?)
+	ec1			BYTE	"**EC: Numbers each line of user input with running total of user's valid numbers using WriteVal.",13,10,13,10,0
+	ASCIIstring	BYTE	MAXBYTES DUP(?)
+	maxValue	BYTE	"2147483647",0
+	numArray	SDWORD	ARRAYELEMENTS DUP(?)
+	arrayCount	SDWORD	1				
+	space		BYTE	" ",0
+	comma		BYTE	", ",0
 	storedDec	SDWORD	?
 	bytesRead	SDWORD	?
 	numCount	SDWORD	0
-	space		BYTE	" ",0
+	boolie		SDWORD	0				; 0 = TRUE 1 = FALSE
+
 
 .code
 main PROC
 
-	;get 10 valid integers from the user, introduction
+	;INTRODUCTION
 	MOV		EDX, OFFSET progTitle
 	CALL	WriteString
 	MOV		EDX, OFFSET programmer
 	CALL	Writestring
+	MOV		EDX, OFFSET ec1
+	CALL	WriteString
 	MOV		EDX, OFFSET instruction
 	CALL	WriteString
 
+
+	;GET 10 VALID INTEGERS FROM USER
+	;set up:
 	MOV		EDI, OFFSET storedDec
-	MOV		ESI, OFFSET ASCIIarr
-	MOV		ECX, 10
+	MOV		ESI, OFFSET numArray
+	MOV		ECX, ARRAYELEMENTS
 	MOV		EBX, 0
+
 	_loop:
-	PUSH	OFFSET ASCIIcount
+	;EXTRA CREDIT 1
+	PUSH	OFFSET arrayCount
+	PUSH	OFFSET ASCIIstring
 	CALL	WriteVal
 	MOV		EDX, OFFSET space
 	CALL	WriteString
 
-	; user inputs 10 numbers
-	PUSH	OFFSET prompt
-	PUSH	OFFSET ASCIIarr
-	PUSH	OFFSET ASCIIcount
+	PUSH	OFFSET	maxValue
+	PUSH	OFFSET error
+	PUSH	OFFSET storedDec
+	PUSH	OFFSET ASCIIstring
 	PUSH	OFFSET bytesRead
+	PUSH	OFFSET prompt
 	CALL	ReadVal
+	CALL	CrLF
+	MOV		EDX, boolie
+	CMP		EDX, 1
+	JNE		_loop
+	INC		arrayCount
+	MOV		EDX, 0
+	MOV		boolie, EDX
 
-	;store in array using register indirect addressing
-	ADD		ESI, EBX
-	MOV		EAX, ESI
-	MOV		EAX, [EDI]
-	MOV		[ESI], EAX
-	ADD		EBX, 4
-	LOOP	_loop
+	;STORE IN ARRAY (using register indirect addressing)
+
+	MOV		ESI, OFFSET storedDec	; num going into array
+	MOV		EDX, [ESI]
+	MOV		numArray[EBX], EDX				; move value into array
+	ADD		EBX, TYPE numArray					
+	LOOP	_loop					; LOOP x's ARRAYSIZE
+
 	;loop through array, display ints
+	_displayInts:
+	MOV		ECX, LENGTHOF numArray
+	MOV		ESI, OFFSET numArray
+	CALL	WriteVal
+	MOV		EDX, OFFSET comma
+	CALL	WriteString
+	LOOP	_displayInts
+
 
 	;calculate sum and display
 
@@ -131,8 +159,6 @@ main PROC
 
 	Invoke ExitProcess,0	; exit to operating system
 main ENDP
-
-
 
 
 ; PROCEDURE DEFINITIONS _____________________________________________________________________________
@@ -145,24 +171,109 @@ main ENDP
 ;
 ; Postconditions: 
 ;
-; Receives: {parameters: progTitle (reference), programmer (reference), ec1 (reference), ec2 (reference),
-;			progDesc(reference)}
+; Receives: {parameters: OFFSET error, OFFSET storedDec, OFFSET ASCIIstring, OFFSET bytesRead, OFFSET prompt}
 ;
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
 
-	readVal PROC
+	readVal PROC	USES ECX EBX ESI EDI
+
 	;invoke mGetString
 	PUSH	EBP
 	MOV		EBP, ESP
-	mGetString		[EBP + 20] , [EBP + 16], [EBP + 12], [EBP + 8]
+	mGetString		[EBP + 32], [EBP + 28], [EBP + 24]  ;stringAddress, bytesReadAddress, promptAddress
 
-	; convert ASCII to SDWORD using LODSB/STOSB (convert each digit)
+	; string primitive setup
+	_setup:
+	MOV		EDX, [EBP + 28]
+	MOV		ECX, EDX				; bytesread
+	MOV		ESI, [EBP + 32]			; input array ASCIIstring (from mGetString)
+	MOV		EDI, 0					; for conversion algorithim
+	MOV		EDX, [EBP+44]			; track iteration through maxvalue chars
 
-	;validate that characters are valid and can fit 32 bit sdword
+	;CHECK FOR SIGNS
+	_stringLoop:
+	XOR		EAX, EAX
+	LODSB	
+	CMP		AL, 45			; -
+	JE		_skipSign
+	CMP		AL, 43			; +
+	JE		_skipSign
+	CMP		ECX, [EBP + 28]
+	JNE		_signLength
 
+	;VALIDATE LENGTH FIRST ITERATION
+	CMP		ECX, LENGTHOF MAXVALUE	; if more chars than maxvalue (no sign)
+	JG		_error
+	CMP		ECX, LENGTHOF MAXVALUE
+	JE		_validateLoop
+	JMP		_convert
+
+	_signLength:
+	CMP		ECX, LENGTHOF MAXVALUE
+	JG		_error	
+	CMP		ECX, LENGTHOF MAXVALUE
+	JL		_convert
+
+	_validateLoop:
+	MOV		EDX, [EBP+28]			;bytes read/ counter
+	SUB		EDX, ECX
+	ADD		EDX, [EBP + 44]
+	XOR		EBX, EBX
+	MOV		EBX, EDX
+	CMP		EAX, EBX		
+	JG		_error
+	SUB		EAX, 48							;convert ASCII to SDWORD
+	IMUL	EDI, 10
+	ADD		EAX, EBX
+	MOV		EDI, EAX
+	LOOP	_stringLoop	
+	MOV		EAX, [EBP+36]
+	MOV		[EAX], EDI
+	LOOP	_validateLoop
+	JMP		_validateNeg
+	
+	_convert:
+	SUB		EAX, 48							;convert ASCII to SDWORD
+	IMUL	EDI, 10
+	ADD		EAX, EBX
+	MOV		EDI, EAX
+	LOOP	_stringLoop	
+	MOV		EAX, [EBP+36]
+	MOV		[EAX], EDI
+	JMP		_validateNeg
+
+	_skipSign:
+	JMP		_signLength ; jump
+
+	_error:
+	MOV		EDX, [EBP + 40]    
+	CALL	WriteString
+	JMP		_errorExit
+
+	; NEGATE IF NEGATIVE
+	_validateNeg:
+	MOV		ECX, 1	
+	MOV		ESI, [EBP + 32]     ;input array ASCIIstring (from mGetString)
+	LODSB
+	CMP		AL, 45				;check if first char is -
+	JNE		_exit
+	MOV		EAX, [EBP + 36]
+	NEG		EAX
+	CMP		EAX, MINVALUE
+	JNE		_exit
+	INC		EAX		
+
+	_exit:
+	MOV		EDX, [EBP + 48]
+	INC		EDX
+	MOV		[EBP + 48], EDX
+	MOV		[EBP + 36], EAX		; output storedDec
+	MOV		EDX, 1				; boolie return TRUE
+	MOV		[EBP + 42], EDX
+	_errorExit:
 	POP EBP
-	RET 20
+	RET 
 	ReadVal ENDP
 
 ; ---------------------------------------------------------------------------------------------------
@@ -179,21 +290,52 @@ main ENDP
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
 	
-	WriteVal PROC USES EAX
+	WriteVal PROC USES EAX EDX EBX ECX
 
 	PUSH	EBP
 	MOV		EBP, ESP
 
-	;convert SDword to ASCII
-	MOV		EAX, [EBP + 8]	
-	ADD		EAX, 48 
-	MOV		storedDec, EAX
+	MOV		EBX, 0			;initialize digit count
+
+	;convert SDWORD to ASCII
+	_loop:
+	
+	MOV		EAX, [EBP + 28]			;move val SDWORD into EDX
+	MOV		EDX, [EAX]
+	MOV		EAX, EDX
+	
+	CDQ
+	MOV		ECX, 10
+	IDIV	ECX
+	MOV		ECX, 0
+	ADD		EDX, 48					;else add 48 to remainder to convert to ASCII
+	MOV		ECX, [EBP + 24 + EBX]
+	MOV		[ECX], EDX				;move into ASCIIstring
+	INC		EBX	
+	CMP		EAX, ECX				;if quotient is 0, then last digit
+	JLE		_displayString
+	JMP		_loop
+					
+
+	_lastDigit:
+	;CMP		EDX, 0
+	;JL		_negative
+	;JMP		_displayString
+
+	;_negative:
+	;NEG		EDX
+	;ADD		EDX, 48
+	;MOV		[EBP + 8 + EBX], EDX
+	;INC		EBX
+	;MOV		[EBP + 8 + EBX], 45
 
 	;invoke mDisplayString
-	mDisplayString	OFFSET storedDec
+	_displayString:
+	mDisplayString	[EBP+24]
 
 	POP EBP
-	RET	8
+
+	RET
 	WriteVal ENDP
 
 END main
