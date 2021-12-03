@@ -66,7 +66,7 @@ INCLUDE Irvine32.inc
 ;-----------------------------------------------------------------------------------------------------
 	
 	;CONSTANTS
-	MINVALUE = 2147483648  ;negated in code
+	MAXVAL = 2147483647  ;negated  and incremented in code
 	MAXASCII = 57
 	MAXBYTES = 12
 	ARRAYELEMENTS = 10
@@ -136,8 +136,9 @@ main PROC
 
 	;STORE IN ARRAY (using register indirect addressing)
 	MOV		ESI, OFFSET storedDec	; num going into array
-	ADD		ESI, EBX
-	MOV		[ESI], EDX				; move value into array
+	MOV		EDI, OFFSET	numArray
+	ADD		EDI, EBX
+	MOV		[EDI], EDX				; move value into array
 	ADD		EBX, TYPE numArray				
 	
 	; clear ASCIIstring
@@ -146,7 +147,8 @@ main PROC
 	MOV    ESI, OFFSET emptyString
 	MOV    EDI, OFFSET ASCIIstring
 	REP    MOVSB
-	LOOP	_loop					; LOOP x's ARRAYSIZE
+	CMP	   ECX, 0
+	JG	   _loop					; LOOP x's ARRAYSIZE
 
 	;loop through array, display ints
 	_displayInts:
@@ -270,6 +272,10 @@ main ENDP
 	IMUL	EDI, 10
 	ADD		EAX, EDI
 	MOV		EDI, EAX
+	CMP		EDI, 0
+	JGE		_convertLoop
+	NEG		EDI
+
 	_convertLoop:
 	LOOP	_convert
 	MOV		EAX, [EBP+36]
@@ -292,11 +298,21 @@ main ENDP
 	CMP		AL, 45				;check if first char is -
 	JNE		_exit
 	NEG		EDI
-	CMP		EDI, MINVALUE
-	JNE		_exit
-	INC		EAX		
+	MOV		EAX, [EBP+36]
+	CMP		EDI, -MAXVAL-1
+	JL		_error
+	MOV		[EAX], EDI
 
 	_exit:
+	MOV		ECX, 1	
+	MOV		ESI, [EBP + 32]     ;input array ASCIIstring (from mGetString)
+	LODSB
+	CMP		AL, 45
+	JNE		_exit2
+	CMP		EDI, MAXVAL
+	JG		_error
+
+	_exit2:
 	XOR		ECX, ECX
 	MOV		EDX, [EBP + 48]
 	MOV		ECX, 1
@@ -331,10 +347,9 @@ main ENDP
 
 	;convert SDWORD to ASCII
 	_loop:
-	
-	MOV		EAX, [EBP + 28]			;move val SDWORD into EDX
-	MOV		EDX, [EAX]
-	MOV		EAX, EDX
+	MOV		ESI, [EBP + 28]			;move val SDWORD into EDX
+	MOV		EDI, [ESI]
+	MOV		EDX, EDI
 	
 	CDQ
 	MOV		ECX, 10
@@ -343,8 +358,8 @@ main ENDP
 	ADD		EDX, 48					;else add 48 to remainder to convert to ASCII
 	MOV		ECX, [EBP + 24 + EBX]
 	MOV		[ECX], EDX				;move into ASCIIstring
-	INC		EBX	
-	CMP		EAX, ECX				;if quotient is 0, then last digit
+	INC		ECX	
+	CMP		EAX, 0					;if quotient is 0, then last digit
 	JLE		_displayString
 	JMP		_loop
 					
