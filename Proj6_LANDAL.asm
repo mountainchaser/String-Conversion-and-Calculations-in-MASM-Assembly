@@ -239,9 +239,55 @@ main PROC
 	LOOP	_displayInts
 	_break:
 
+	; clear ASCIIstring
+	PUSH	ECX
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET ASCIIstring
+	REP    MOVSB
+	POP		ECX
 
-	;calculate sum and display
-	_SUM:
+	; clear revString
+	PUSH	ECX
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET revString
+	REP    MOVSB
+	POP	   ECX	
+
+
+	;CALCULATE AND DISPLAY SUM
+	CALL	CrLf
+	CALL	CrLF
+	MOV		EDX, OFFSET sumString
+	CALL	WriteString
+	CALL	CrLf
+
+	MOV		ECX, arrayCount
+	SUB		ECX, 2
+	MOV		ESI, OFFSET numArray
+	MOV		EDI, OFFSET sum
+	MOV		EBX, 0
+	MOV		EAX, [ESI+EBX]
+	_summation:
+	ADD		EBX, 4
+	ADD		EAX, [ESI+EBX]
+	LOOP	_summation
+	MOV		[EDI], EAX
+
+	PUSH	OFFSET revString
+	PUSH	OFFSET bytesRead
+	PUSH	OFFSET revString
+	PUSH	[EDI]
+	PUSH	OFFSET ASCIIstring
+	CALL	WriteVal
+	CALL	CrLf
+	CALL	CrLf
+
+	;CALCULATE AND DISPLAY AVERAGE
+	
 
 	;calculate average and display
 
