@@ -57,10 +57,37 @@ INCLUDE Irvine32.inc
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
 
-	mDisplayString	MACRO	stringAddress
+	mDisplayString	MACRO	stringAddress, revStringAddress, stringLength
 		;print stored string using WriteString
-		MOV		EDX, stringAddress
-		CALL	WriteString
+
+		CMP		stringLength, 1
+		JNE		_setup
+		MOV    EDX, stringAddress
+		CALL   WriteString
+		JMP	   _end
+
+		_setup:
+		CMP	   stringLength, 0
+		JE	   _end
+		MOV    ECX, stringLength
+		MOV    ESI, stringAddress
+		MOV    EDI, revStringAddress
+		ADD    ESI, ECX
+		DEC    ESI
+  
+		;REVERSE STRING
+		_reverseLoop:
+		STD
+		LODSB
+		CLD
+		STOSB
+		LOOP   _reverseLoop
+
+		;PRINT STRING
+		MOV    EDX, revStringAddress
+		CALL   WriteString
+		_end:
+	
 	ENDM
 
 ;-----------------------------------------------------------------------------------------------------
@@ -79,13 +106,19 @@ INCLUDE Irvine32.inc
 	prompt		BYTE	"Please enter a number: ",0
 	error		BYTE	"ERROR: This is either not a valid number, or your integer has too many digits.",0
 	ec1			BYTE	"**EC: Numbers each line of user input with running total of user's valid numbers using WriteVal.",13,10,13,10,0
+	displayList BYTE	"You entered the following numbers: ",13,10,0
+	sumString	BYTE	"Their sum is: ",0
+	avgString	BYTE	"Their rounded average is: ",0
 	ASCIIstring	BYTE	MAXBYTES DUP(?)
 	emptyString	BYTE	MAXBYTES DUP(?)
-	maxValue	BYTE	"2147483648",0
-	numArray	SDWORD	ARRAYELEMENTS DUP(?)
-	arrayCount	SDWORD	1				
+	revString	BYTE	MAXBYTES DUP(?)
+	maxValue	BYTE	"2147483648",0			
 	space		BYTE	" ",0
 	comma		BYTE	", ",0
+	numArray	SDWORD	ARRAYELEMENTS DUP(?)
+	arrayCount	SDWORD	1	
+	sum			SDWORD	?
+	average		SDWORD	?
 	storedDec	SDWORD	?
 	bytesRead	SDWORD	?
 	numCount	SDWORD	0
@@ -114,6 +147,14 @@ main PROC
 
 	_loop:
 	;EXTRA CREDIT 1
+	CDQ
+	MOV		EAX, 10
+	IDIV	arrayCount
+	INC		EDX
+	MOV		bytesRead, EDX
+	PUSH	OFFSET revString
+	PUSH	OFFSET bytesRead
+	PUSH	OFFSET revString
 	PUSH	arrayCount
 	PUSH	OFFSET ASCIIstring
 	CALL	WriteVal
@@ -135,39 +176,74 @@ main PROC
 	MOV		boolie, 0
 
 	;STORE IN ARRAY (using register indirect addressing)
-	MOV		ESI, OFFSET storedDec	; num going into array
+	MOV		ESI, storedDec	; num going into array
 	MOV		EDI, OFFSET	numArray
 	ADD		EDI, EBX
-	MOV		[EDI], EDX				; move value into array
+	MOV		[EDI], ESI				; move value into array
 	ADD		EBX, TYPE numArray				
 	
 	; clear ASCIIstring
+	PUSH	ECX
 	CLD
 	MOV    ECX, MAXBYTES
 	MOV    ESI, OFFSET emptyString
 	MOV    EDI, OFFSET ASCIIstring
 	REP    MOVSB
-	JMP	   _loop
+	POP		ECX
+	DEC		ECX
+	CMP		ECX, 0
+	JNE	   _loop
 
 	;loop through array, display ints
+	MOV		EDX, OFFSET displayList
+	CALL	WriteString
+
 	CLD
 	MOV		ECX, arrayCount
+	MOV		EBX, 0
+
 	_displayInts:
-	DEC		ECX
-	PUSH	numArray
+	MOV		ESI, OFFSET numarray
+	PUSH	OFFSET	revString
+	PUSH	OFFSET bytesRead
+	PUSH	OFFSET revString
+	PUSH	[ESI + EBX]
 	PUSH	OFFSET ASCIIstring
 	CALL	WriteVal
-	ADD		ESI, TYPE numArray
-	CMP		ECX, 1
-	JE		_SUM
+	ADD		EBX, TYPE numArray
+	CMP		ECX, 2
+	JE		_break
 	MOV		EDX, OFFSET comma
 	CALL	WriteString
+
+	; clear ASCIIstring
+	_clear:
+	PUSH	ECX
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET ASCIIstring
+	REP    MOVSB
+	POP		ECX
+
+	; clear revString
+	_clear2:
+	PUSH	ECX
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET revString
+	REP    MOVSB
+	POP	   ECX	
+
 	LOOP	_displayInts
+	_break:
+
 
 	;calculate sum and display
 	_SUM:
 
-	;calvulate average and display
+	;calculate average and display
 
 	Invoke ExitProcess,0	; exit to operating system
 main ENDP
@@ -188,7 +264,7 @@ main ENDP
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
 
-	readVal PROC	USES ECX EBX ESI EDI
+	readVal PROC	USES ECX EDX ESI EDI
 
 	;invoke mGetString
 	PUSH	EBP
@@ -337,6 +413,9 @@ main ENDP
 ; Preconditions: 
 ;
 ; Postconditions: 
+;				EBP + 28 = SDWORD
+;				EBP +24 = ASCIIstring
+;				EBP + 20 = 
 ;
 ; Receives: {parameters: string (reference)}
 ;
@@ -348,10 +427,10 @@ main ENDP
 	PUSH	EBP
 	MOV		EBP, ESP
 
-	MOV		EBX, 0			;initialize digit count
+	MOV		EBX, 0					;initialize digit count
 
 	XOR		EDX, EDX
-	MOV		EAX, [EBP + 28]			;move val SDWORD into EDX
+	MOV		EAX, [EBP + 28]			;move value into EAX
 	_loop:
 	CDQ
 	MOV		ECX, 10
@@ -359,37 +438,33 @@ main ENDP
 	MOV		ECX, 0
 	MOV		EDI, EDX
 	ADD		EDI, 48					;else add 48 to remainder to convert to ASCII
-	MOV		ECX, [EBP + 24]
+	MOV		ECX, [EBP + 24]			;move into ASCIIstring
 	ADD		ECX, EBX
-	MOV		[ECX], EDI				;move into ASCIIstring
+	MOV		[ECX], EDI				
 	INC		EBX
 	CMP		EAX, 0					;if quotient is 0, then last digit
 	JLE		_isNegative
 	JMP		_loop
 
-	;invoke mDisplayString
-	_lastDigit:
-	;CMP		EDX, 0
-	;JE		_isNegative
-	;MOV		EDI, [EBP + 24]
-	;ADD		EDI, EBX
-	;MOV		[EDI], EDX
-
 	_isNegative:
-	MOV		EDX, [EBP+28]
+	MOV		EDX, [EBP + 28]
 	CMP		EDX, 0
 	JGE		_displaystring
-	INC		EBX
+ 	INC		EBX
 	MOV		EDI, [EBP + 24 + EBX]
 	MOV		EDX, 45
 	MOV		[EDI], EDX				;move into ASCIIstring
 
 	_displayString:
-	mDisplayString	[EBP+24]
+	MOV		EDI, [EBP + 36]
+	MOV		[EDI], EBX
+	XOR		ECX, ECX
+	MOV		ECX, EBX
+	mDisplayString	[EBP + 24], [EBP + 40], ECX  ;stringAddress, revStringAddress, stringLength 
 
 	POP EBP
 
-	RET
+	RET	
 	WriteVal ENDP
 
 END main
