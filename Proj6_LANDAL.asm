@@ -109,6 +109,7 @@ INCLUDE Irvine32.inc
 	displayList BYTE	"You entered the following numbers: ",13,10,0
 	sumString	BYTE	"Their sum is: ",0
 	avgString	BYTE	"Their rounded average is: ",0
+	farewell	BYTE	"That was fun - cya later!",0
 	ASCIIstring	BYTE	MAXBYTES DUP(?)
 	emptyString	BYTE	MAXBYTES DUP(?)
 	revString	BYTE	MAXBYTES DUP(?)
@@ -263,7 +264,6 @@ main PROC
 	CALL	CrLF
 	MOV		EDX, OFFSET sumString
 	CALL	WriteString
-	CALL	CrLf
 
 	MOV		ECX, arrayCount
 	SUB		ECX, 2
@@ -287,10 +287,31 @@ main PROC
 	CALL	CrLf
 
 	;CALCULATE AND DISPLAY AVERAGE
+	MOV		EDX, OFFSET avgString
+	CALL	WriteString
 	
+	CDQ
+	MOV		EAX, sum
+	MOV		ECX, arrayCount
+	SUB		ECX, 1
+	IDIV	ECX
+	MOV		average, EAX
 
-	;calculate average and display
+	PUSH	OFFSET revString
+	PUSH	OFFSET bytesRead
+	PUSH	OFFSET revString
+	PUSH	EAX
+	PUSH	OFFSET ASCIIstring
+	CALL	WriteVal
+	
+	CALL	CrLF
+	CALL	CrLF
+	MOV		EDX, OFFSET farewell
+	CALL	WriteString
 
+	CALL	CrLf
+	CALL	CrlF
+	
 	Invoke ExitProcess,0	; exit to operating system
 main ENDP
 
