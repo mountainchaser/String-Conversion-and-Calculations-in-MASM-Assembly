@@ -288,6 +288,25 @@ main PROC
 	CALL	CrLf
 	CALL	CrLf
 
+	; clear ASCIIstring
+	PUSH	ECX
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET ASCIIstring
+	REP    MOVSB
+	POP		ECX
+
+	; clear revString
+	PUSH	ECX
+	CLD
+	MOV    ECX, MAXBYTES
+	MOV    ESI, OFFSET emptyString
+	MOV    EDI, OFFSET revString
+	REP    MOVSB
+	POP	   ECX	
+
+
 	;CALCULATE AND DISPLAY AVERAGE
 	MOV		EDX, OFFSET avgString
 	CALL	WriteString
@@ -298,11 +317,13 @@ main PROC
 	SUB		ECX, 1
 	IDIV	ECX
 	MOV		average, EAX
+	XOR		EAX, EAX
+	XOR		EDX, EDX
 
 	PUSH	OFFSET revString
 	PUSH	OFFSET bytesRead
 	PUSH	OFFSET revString
-	PUSH	EAX
+	PUSH	average
 	PUSH	OFFSET ASCIIstring
 	CALL	WriteVal
 	
