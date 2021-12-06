@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.29.30133.0	    12/05/21 21:34:43
+Microsoft (R) Macro Assembler Version 14.29.30133.0	    12/05/21 22:08:29
 2String Primitives and Macros    (Proj6_LANDAL.asm	     Page 1 - 1
 
 
@@ -648,72 +648,80 @@ Microsoft (R) Macro Assembler Version 14.29.30133.0	    12/05/21 21:34:43
 
  0000036B  33 D2			XOR		EDX, EDX
  0000036D  8B 45 1C			MOV		EAX, [EBP + 28]			;move value into EAX
- 00000370				_loop:
- 00000370  99				CDQ
- 00000371  B9 0000000A			MOV		ECX, 10
- 00000376  F7 F9			IDIV	ECX
- 00000378  B9 00000000			MOV		ECX, 0
- 0000037D  8B FA			MOV		EDI, EDX
- 0000037F  83 C7 30			ADD		EDI, 48					;else add 48 to remainder to convert to ASCII
- 00000382  8B 4D 18			MOV		ECX, [EBP + 24]			;move into ASCIIstring
- 00000385  03 CB			ADD		ECX, EBX
- 00000387  89 39			MOV		[ECX], EDI				
- 00000389  43				INC		EBX
- 0000038A  83 F8 00			CMP		EAX, 0					;if quotient is 0, then last digit
- 0000038D  7E 02			JLE		_isNegative
- 0000038F  EB DF			JMP		_loop
+ 00000370  83 F8 00			CMP	EAX, 0
+ 00000373  7D 02			JGE		_loop
+ 00000375  F7 D8			NEG		EAX
 
- 00000391				_isNegative:
- 00000391  8B 55 1C			MOV		EDX, [EBP + 28]
- 00000394  83 FA 00			CMP		EDX, 0
- 00000397  7D 0C			JGE		_displaystring
- 00000399  43			 	INC		EBX
- 0000039A  8B 7C 1D 18			MOV		EDI, [EBP + 24 + EBX]
- 0000039E  BA 0000002D			MOV		EDX, 45
- 000003A3  89 17			MOV		[EDI], EDX				;move into ASCIIstring
+ 00000377				_loop:
+ 00000377  99				CDQ
+ 00000378  B9 0000000A			MOV		ECX, 10
+ 0000037D  F7 F9			IDIV	ECX
+ 0000037F  B9 00000000			MOV		ECX, 0
+ 00000384  8B FA			MOV		EDI, EDX
+ 00000386  83 C7 30			ADD		EDI, 48					;else add 48 to remainder to convert to ASCII
+ 00000389  8B 4D 18			MOV		ECX, [EBP + 24]			;move into ASCIIstring
+ 0000038C  03 CB			ADD		ECX, EBX
+ 0000038E  89 39			MOV		[ECX], EDI				
+ 00000390  43				INC		EBX
+ 00000391  83 F8 00			CMP		EAX, 0					;if quotient is 0, then last digit
+ 00000394  7E 02			JLE		_isNegative
+ 00000396  EB DF			JMP		_loop
 
- 000003A5				_displayString:
- 000003A5  8B 7D 24			MOV		EDI, [EBP + 36]
- 000003A8  89 1F			MOV		[EDI], EBX
- 000003AA  33 C9			XOR		ECX, ECX
- 000003AC  8B CB			MOV		ECX, EBX
+ 00000398				_isNegative:
+ 00000398  8B 55 1C			MOV		EDX, [EBP + 28]
+ 0000039B  83 FA 00			CMP		EDX, 0
+ 0000039E  7D 0F			JGE		_displaystring
+
+ 000003A0				_negSign:
+ 000003A0  8B 4D 18			MOV		ECX, [EBP + 24]
+ 000003A3  03 CB			ADD		ECX, EBX
+ 000003A5  33 D2			XOR		EDX, EDX
+ 000003A7  BA 0000002D			MOV		EDX, 45
+ 000003AC  89 11			MOV		[ECX], EDX				;move into ASCIIstring
+ 000003AE  43				INC EBX
+
+ 000003AF				_displayString:
+ 000003AF  8B 7D 24			MOV		EDI, [EBP + 36]
+ 000003B2  89 1F			MOV		[EDI], EBX
+ 000003B4  33 C9			XOR		ECX, ECX
+ 000003B6  8B CB			MOV		ECX, EBX
 					mDisplayString	[EBP + 24], [EBP + 40], ECX  ;stringAddress, revStringAddress, stringLength 
- 000003AE  83 F9 01	     1			CMP		ECX, 1
- 000003B1  75 0A	     1			JNE		_setup
- 000003B3  8B 55 18	     1			MOV    EDX, [EBP + 24]
- 000003B6  E8 00000000 E     1			CALL   WriteString
- 000003BB  EB 1E	     1			JMP	   _end
- 000003BD		     1			_setup:
- 000003BD  83 F9 00	     1			CMP	   ECX, 0
- 000003C0  74 19	     1			JE	   _end
- 000003C2  8B C9	     1			MOV    ECX, ECX
- 000003C4  8B 75 18	     1			MOV    ESI, [EBP + 24]
- 000003C7  8B 7D 28	     1			MOV    EDI, [EBP + 40]
- 000003CA  03 F1	     1			ADD    ESI, ECX
- 000003CC  4E		     1			DEC    ESI
- 000003CD		     1			_reverseLoop:
- 000003CD  FD		     1			STD
- 000003CE  AC		     1			LODSB
- 000003CF  FC		     1			CLD
- 000003D0  AA		     1			STOSB
- 000003D1  E2 FA	     1			LOOP   _reverseLoop
- 000003D3  8B 55 28	     1			MOV    EDX, [EBP + 40]
- 000003D6  E8 00000000 E     1			CALL   WriteString
- 000003DB		     1			_end:
+ 000003B8  83 F9 01	     1			CMP		ECX, 1
+ 000003BB  75 0A	     1			JNE		_setup
+ 000003BD  8B 55 18	     1			MOV    EDX, [EBP + 24]
+ 000003C0  E8 00000000 E     1			CALL   WriteString
+ 000003C5  EB 1E	     1			JMP	   _end
+ 000003C7		     1			_setup:
+ 000003C7  83 F9 00	     1			CMP	   ECX, 0
+ 000003CA  74 19	     1			JE	   _end
+ 000003CC  8B C9	     1			MOV    ECX, ECX
+ 000003CE  8B 75 18	     1			MOV    ESI, [EBP + 24]
+ 000003D1  8B 7D 28	     1			MOV    EDI, [EBP + 40]
+ 000003D4  03 F1	     1			ADD    ESI, ECX
+ 000003D6  4E		     1			DEC    ESI
+ 000003D7		     1			_reverseLoop:
+ 000003D7  FD		     1			STD
+ 000003D8  AC		     1			LODSB
+ 000003D9  FC		     1			CLD
+ 000003DA  AA		     1			STOSB
+ 000003DB  E2 FA	     1			LOOP   _reverseLoop
+ 000003DD  8B 55 28	     1			MOV    EDX, [EBP + 40]
+ 000003E0  E8 00000000 E     1			CALL   WriteString
+ 000003E5		     1			_end:
 
- 000003DB  5D				POP EBP
+ 000003E5  5D				POP EBP
 
 					RET	
- 000003DC  59		   *	    pop    ecx
- 000003DD  5B		   *	    pop    ebx
- 000003DE  5A		   *	    pop    edx
- 000003DF  58		   *	    pop    eax
- 000003E0  C3		   *	    ret    00000h
- 000003E1				WriteVal ENDP
+ 000003E6  59		   *	    pop    ecx
+ 000003E7  5B		   *	    pop    ebx
+ 000003E8  5A		   *	    pop    edx
+ 000003E9  58		   *	    pop    eax
+ 000003EA  C3		   *	    ret    00000h
+ 000003EB				WriteVal ENDP
 
 				END main
 
-Microsoft (R) Macro Assembler Version 14.29.30133.0	    12/05/21 21:34:43
+Microsoft (R) Macro Assembler Version 14.29.30133.0	    12/05/21 22:08:29
 2String Primitives and Macros    (Proj6_LANDAL.asm	     Symbols 2 - 1
 
 
@@ -816,7 +824,7 @@ Segments and Groups:
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
 _DATA  . . . . . . . . . . . . .	32 Bit	 0000025A Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 000003E1 Para	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000003EB Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -922,13 +930,14 @@ WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-WriteVal . . . . . . . . . . . .	P Near	 0000035F _TEXT	Length= 00000082 Public STDCALL
-  _loop  . . . . . . . . . . . .	L Near	 00000370 _TEXT	
-  _isNegative  . . . . . . . . .	L Near	 00000391 _TEXT	
-  _displayString . . . . . . . .	L Near	 000003A5 _TEXT	
-  _setup . . . . . . . . . . . .	L Near	 000003BD _TEXT	
-  _reverseLoop . . . . . . . . .	L Near	 000003CD _TEXT	
-  _end . . . . . . . . . . . . .	L Near	 000003DB _TEXT	
+WriteVal . . . . . . . . . . . .	P Near	 0000035F _TEXT	Length= 0000008C Public STDCALL
+  _loop  . . . . . . . . . . . .	L Near	 00000377 _TEXT	
+  _isNegative  . . . . . . . . .	L Near	 00000398 _TEXT	
+  _negSign . . . . . . . . . . .	L Near	 000003A0 _TEXT	
+  _displayString . . . . . . . .	L Near	 000003AF _TEXT	
+  _setup . . . . . . . . . . . .	L Near	 000003C7 _TEXT	
+  _reverseLoop . . . . . . . . .	L Near	 000003D7 _TEXT	
+  _end . . . . . . . . . . . . .	L Near	 000003E5 _TEXT	
 WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000246 Public STDCALL
   _loop  . . . . . . . . . . . .	L Near	 0000003C _TEXT	

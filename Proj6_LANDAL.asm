@@ -503,6 +503,10 @@ WriteVal PROC USES EAX EDX EBX ECX
 
 	XOR		EDX, EDX
 	MOV		EAX, [EBP + 28]			;move value into EAX
+	CMP	EAX, 0
+	JGE		_loop
+	NEG		EAX
+
 	_loop:
 	CDQ
 	MOV		ECX, 10
@@ -522,10 +526,14 @@ WriteVal PROC USES EAX EDX EBX ECX
 	MOV		EDX, [EBP + 28]
 	CMP		EDX, 0
 	JGE		_displaystring
- 	INC		EBX
-	MOV		EDI, [EBP + 24 + EBX]
+
+	_negSign:
+	MOV		ECX, [EBP + 24]
+	ADD		ECX, EBX
+	XOR		EDX, EDX
 	MOV		EDX, 45
-	MOV		[EDI], EDX				;move into ASCIIstring
+	MOV		[ECX], EDX				;move into ASCIIstring
+	INC EBX
 
 	_displayString:
 	MOV		EDI, [EBP + 36]
