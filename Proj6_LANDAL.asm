@@ -1,12 +1,13 @@
 TITLE String Primitives and Macros    (Proj6_LANDAL.asm)
 
 ; Author: Allison Land
-; Last Modified: 11/29/21
+; Last Modified: 12/5/21
 ; OSU email address: LANDAL@oregonstate.edu
 ; Course number/section:   CS271 Section 400
-; Project Number: 6                Due Date: 12/4/21
+; Project Number: 6                Due Date: 12/5/21
 ; Description: This program uses macros to take decimal number inputs as strings, and then converts them to 
-;		decimal numbers....
+;		decimal numbers and stores them in an array. It then performs calculations and converts the stored 
+;		numbers back into strings, and displays those strings. 
 ;-----------------------------------------------------------------------------------------------------
 
 INCLUDE Irvine32.inc
@@ -15,15 +16,14 @@ INCLUDE Irvine32.inc
 ; ---------------------------------------------------------------------------------------------------
 ; Name:			mGetString
 ; 
-; Desc:			Gets a string from the user and validates that it contains a valid integer that will 
-;				fit in a 32 bit register (11 characters total, including sign +/-)
+; Desc:			Displays a string. 
 ;
-; Preconditions: 
+; Preconditions: Called in ReadVal - arguments are pushed onto the stack. 
 ;
-; Postconditions: 
+; Postconditions: EDX, ECX, EAX changed
 ;
-; Receives: {parameters: progTitle (reference), programmer (reference), ec1 (reference), ec2 (reference),
-;			progDesc(reference)}
+; Receives: {parameters: StringAddress (reference), bytesReadAddress (reference), 
+;			promptAddress (reference)}
 ;
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
@@ -41,21 +41,23 @@ INCLUDE Irvine32.inc
 
 	ENDM
 
+
 	
 ; ---------------------------------------------------------------------------------------------------
 ; Name:			mDisplayString
 ; 
-; Desc:			
+; Desc:			Displays string by reversing it (due to reverse storage)	
 ;
-; Preconditions: 
+; Preconditions: Called in WriteVal - arguments are pushed onto the stack. 
 ;
-; Postconditions: 
+; Postconditions: EDX, ECX, ESI, EDI, ESI, EAX changed
 ;
-; Receives: {parameters: progTitle (reference), programmer (reference), ec1 (reference), ec2 (reference),
-;			progDesc(reference)}
+; Receives: {parameters: StringAddress (reference), revStringAddress (reference), 
+;			stringLength (value)}
 ;
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
+
 
 	mDisplayString	MACRO	stringAddress, revStringAddress, stringLength
 		;print stored string using WriteString
@@ -125,7 +127,7 @@ INCLUDE Irvine32.inc
 	numCount	SDWORD	0
 	boolie		SDWORD	0				; 0 = TRUE 1 = FALSE
 
-
+;-----------------------------------------------------------------------------------------------------
 .code
 main PROC
 
@@ -320,11 +322,14 @@ main ENDP
 ; ---------------------------------------------------------------------------------------------------
 ; Name:			ReadVal
 ; 
-; Desc:			
+; Desc:			Gets a string from the user and validates that it contains a valid integer that will 
+;				fit in a 32 bit register (11 characters total, including sign +/-)		
 ;
-; Preconditions: 
+; Preconditions: 	PUSHED TO STACK:	OFFSET boolie, OFFSET maxValue, OFFSET error, OFFSET storedDec
+;				OFFSET ASCIIstring, OFFSET bytesRead, OFFSET prompt
+
 ;
-; Postconditions: 
+; Postconditions: Registers preserved on stack and not changed.
 ;
 ; Receives: {parameters: OFFSET error, OFFSET storedDec, OFFSET ASCIIstring, OFFSET bytesRead, OFFSET prompt}
 ;
@@ -475,21 +480,21 @@ main ENDP
 ; ---------------------------------------------------------------------------------------------------
 ; Name:			WriteVal
 ; 
-; Desc:			
+; Desc:			Converts a SDWORD to ASCII and displays the number value as a string. 	
 ;
-; Preconditions: 
+; Preconditions: 	PUSHED TO STACK:	OFFSET revString, OFFSET bytesRead, OFFSET revString
+;				value to display, OFFSET ASCIIstring
 ;
-; Postconditions: 
-;				EBP + 28 = SDWORD
-;				EBP +24 = ASCIIstring
-;				EBP + 20 = 
+; Postconditions: Registers preserved on stack and not changed. 
+;				
 ;
-; Receives: {parameters: string (reference)}
+; Receives: {parameters:  revString (reference), bytesRead (reference), revString (reference)
+;				value to display (value), ASCIIstring (reference)}
 ;
 ; Returns: None
 ; ---------------------------------------------------------------------------------------------------
 	
-	WriteVal PROC USES EAX EDX EBX ECX
+WriteVal PROC USES EAX EDX EBX ECX
 
 	PUSH	EBP
 	MOV		EBP, ESP
@@ -535,3 +540,4 @@ main ENDP
 	WriteVal ENDP
 
 END main
+
